@@ -1,4 +1,5 @@
-![Static Badge](https://img.shields.io/badge/streamlit-white?style=flat&logo=Streamlit) ![Static Badge](https://img.shields.io/badge/pandas-white?style=flat&logo=Pandas&logoColor=%23150458) ![Static Badge](https://img.shields.io/badge/plotly-white?style=flat&logo=Plotly&logoColor=%233F4F75)
+![Static Badge](https://img.shields.io/badge/streamlit-white?style=flat&logo=Streamlit) ![Static Badge](https://img.shields.io/badge/pandas-white?style=flat&logo=Pandas&logoColor=%23150458&color=%232CB1C5) ![Static Badge](https://img.shields.io/badge/plotly-white?style=flat&logo=Plotly&logoColor=%233F4F75&color=%23A4A8CE) ![Static Badge](https://img.shields.io/badge/python-white?style=flat&logo=Python&logoColor=%23FFDD53&color=%233776AB%20)
+
 
 
 
