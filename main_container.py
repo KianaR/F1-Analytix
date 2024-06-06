@@ -111,6 +111,7 @@ def final_pos_graph(year, driver, results_df, races_df, drivers_df):
             categoryarray = pos_order)
     )
 
+    fig.update_traces(line_color="#FF4B4B")
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -128,9 +129,14 @@ def Main_Setup(filter_data, dfs):
 
     st.header(f"Performance Overview - {year}", anchor=False)
 
+    if (len(drivers) == 0):
+        st.text("Select driver(s) to view performance overview")
     if (len(drivers) == 1):
         #TODO OLDER RACES AND DRIVER DATA NOT REGISTERING
         #TODO MAKE GET RACES PER YEAR FOR EACH DRIVER MODULAR
         #TODO CHANGE GRAPH FONTS
+        #TODO MULTI DRIVER SELECTIONS
+        #TODO TEAM COLOURS 
+        
         metric_setup(year, drivers, standings_df, races_df, drivers_df, laps_df, c_df)
         final_pos_graph(year, drivers, results_df, races_df, drivers_df)
