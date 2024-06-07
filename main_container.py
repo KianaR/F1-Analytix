@@ -3,6 +3,19 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 
+def get_driver_ids(drivers, drivers_df):
+    driver_ids = []
+    for driver in drivers:
+        driver_name = driver.split(" ")
+        driver_id = drivers_df.loc[(drivers_df["forename"] == driver_name[0]) & (drivers_df["surname"] == driver_name[1]), "driver_id"]
+
+        items = driver_id.items() # Series size should always be 1 because 'ID' is unique
+        for item in items:
+            driver_ids.append(item[1])
+
+    return driver_ids
+
+
 def metric_setup(year, driver, standings_df, races_df, drivers_df, laps_df, c_df):
     driver_name = driver[0].split(" ")
     driver_id = drivers_df.loc[(drivers_df["forename"] == driver_name[0]) & (drivers_df["surname"] == driver_name[1]), "driver_id"]
@@ -60,59 +73,53 @@ def metric_setup(year, driver, standings_df, races_df, drivers_df, laps_df, c_df
     col3.metric("Total Points", value= int(driver_points))
 
 
-def final_pos_graph(year, driver, results_df, races_df, drivers_df):
-    driver_name = driver[0].split(" ")
-    driver_id = drivers_df.loc[(drivers_df["forename"] == driver_name[0]) & (drivers_df["surname"] == driver_name[1]), "driver_id"]
+def final_pos_graph(year, results_df, races_df, d_ids):
+    for d_id in d_ids:
+        names = []
+        finals = {"x": [], "y": []}
+        pos_order = []
 
-    for d in driver_id.items():
-        d_id = d[1]
+        races_df = races_df.loc[races_df["year"] == year, ["race_id", "circuit_id", "name"]]
+        for index, r in races_df.iterrows():
+            # Obtains each race the selected driver was in for the selected year
+            race_pos = results_df.loc[(results_df["race_id"] == r["race_id"]) & (results_df["driver_id"] == d_id), "position"]
+            race_pos = race_pos.replace('\\N','DNF')
 
-    names = []
-    finals = {"x": [], "y": []}
-    pos_order = []
+            names.append(r["name"])
+            for pos in race_pos.items():
+                finals["x"].append(r["race_id"])
+                finals["y"].append(pos[1])
+                if pos[1] != "DNF":
+                    pos_order.append(int(pos[1]))
 
-    races_df = races_df.loc[races_df["year"] == year, ["race_id", "circuit_id", "name"]]
-    for index, r in races_df.iterrows():
-        # Obtains each race the selected driver was in for the selected year
-        race_pos = results_df.loc[(results_df["race_id"] == r["race_id"]) & (results_df["driver_id"] == d_id), "position"]
-        race_pos = race_pos.replace('\\N','DNF')
+        df = pd.DataFrame(data=finals)
+        pos_order.sort() # Orders positions by numbers
+        
+        pos_order.append("DNF") # Adds DNF position for bottom of graph
 
-        names.append(r["name"])
-        for pos in race_pos.items():
-            finals["x"].append(r["race_id"])
-            finals["y"].append(pos[1])
-            if pos[1] != "DNF":
-                pos_order.append(int(pos[1]))
+        fig = px.line(df, x="x", y="y", title=f"Finishing Positions",
+                    labels = {"x": "Race", "y": "Final position"}, markers=True)
+                        
+        fig.update_layout(
+            xaxis = dict(
+                tickangle = -45,
+                tickmode = 'array',
+                tickvals = df["x"],
+                ticktext = names,
+                type = "category"),
+            yaxis = dict(
+                type = "category",
+                categoryorder ='array', 
+                autorange = "reversed",
+                categoryarray = pos_order)
+        )
 
-    df = pd.DataFrame(data=finals)
-    pos_order.sort() # Orders positions by numbers
-    
-    pos_order.append("DNF") # Adds DNF position for bottom of graph
+        fig.update_traces(line_color="#FF4B4B")
+        st.plotly_chart(fig, use_container_width=True)
 
-    # fig = px.scatter(x=finals[0], y=finals[1], title=f"Finishing Positions {year}",
-    #                  labels = {
-    #                     "x": "Race",
-    #                     "y": "Final position"
-    #                  })
-    fig = px.line(df, x="x", y="y", title=f"Finishing Positions",
-                   labels = {"x": "Race", "y": "Final position"})
-                    
-    fig.update_layout(
-        xaxis = dict(
-            tickangle = -45,
-            tickmode = 'array',
-            tickvals = df["x"],
-            ticktext = names,
-            type = "category"),
-        yaxis = dict(
-            type = "category",
-            categoryorder ='array', 
-            autorange = "reversed",
-            categoryarray = pos_order)
-    )
 
-    fig.update_traces(line_color="#FF4B4B")
-    st.plotly_chart(fig, use_container_width=True)
+def lap_times_graph():
+    pass
 
 
 def Main_Setup(filter_data, dfs):
@@ -132,11 +139,14 @@ def Main_Setup(filter_data, dfs):
     if (len(drivers) == 0):
         st.text("Select driver(s) to view performance overview")
     if (len(drivers) == 1):
-        #TODO OLDER RACES AND DRIVER DATA NOT REGISTERING
+        #TODO OLDER RACES AND DRIVER DATA NOT ALWAYS REGISTERING
         #TODO MAKE GET RACES PER YEAR FOR EACH DRIVER MODULAR
-        #TODO CHANGE GRAPH FONTS
         #TODO MULTI DRIVER SELECTIONS
         #TODO TEAM COLOURS 
+        #TODO LAP TIMES PER RACE CHART
         
+        driver_ids = get_driver_ids(drivers, drivers_df)
+
         metric_setup(year, drivers, standings_df, races_df, drivers_df, laps_df, c_df)
-        final_pos_graph(year, drivers, results_df, races_df, drivers_df)
+        final_pos_graph(year, results_df, races_df, driver_ids)
+        lap_times_graph()
