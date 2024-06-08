@@ -5,7 +5,18 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 from plotly.colors import n_colors
+from plotly import graph_objects as go
 
+
+def get_driver_names_from_id(drivers, drivers_df):
+    driver_names = []
+    for driver in drivers:
+        driver_names_df = drivers_df.loc[(drivers_df["driver_id"] == driver), ["forename", "surname"]]
+        for i, row in driver_names_df.iterrows():
+            name = row["forename"] + " " + row["surname"]
+            driver_names.append(name)
+    return driver_names
+         
 def get_driver_ids(drivers, drivers_df):
     driver_ids = []
     for driver in drivers:
@@ -20,102 +31,116 @@ def get_driver_ids(drivers, drivers_df):
 
 
 def metric_setup(year, driver, standings_df, races_df, drivers_df, laps_df, c_df):
-    driver_name = driver[0].split(" ")
-    driver_id = drivers_df.loc[(drivers_df["forename"] == driver_name[0]) & (drivers_df["surname"] == driver_name[1]), "driver_id"]
-    
-    driver_points = 0
-    driver_wins = 0
+    if (len(driver) == 1):
+        driver_name = driver[0].split(" ")
+        driver_id = drivers_df.loc[(drivers_df["forename"] == driver_name[0]) & (drivers_df["surname"] == driver_name[1]), "driver_id"]
+        
+        driver_points = 0
+        driver_wins = 0
 
-    for d in driver_id.items():
-        d_id = d[1]
+        for d in driver_id.items():
+            d_id = d[1]
 
-    fastest_laps_per_race = {}
+        fastest_laps_per_race = {}
 
-    races_df = races_df.loc[races_df["year"] == year, ["race_id", "circuit_id"]]
-    for index, r in races_df.iterrows():
-        # Obtains each race the selected driver was in for the selected year
-        dvrs = standings_df.loc[(standings_df["race_id"] == r["race_id"]) & (standings_df["driver_id"] == d_id), ["points", "wins"]]
-        driver_points = dvrs["points"].max()
-        driver_wins = dvrs["wins"].max()
+        races_df = races_df.loc[races_df["year"] == year, ["race_id", "circuit_id"]]
+        for index, r in races_df.iterrows():
+            # Obtains each race the selected driver was in for the selected year
+            dvrs = standings_df.loc[(standings_df["race_id"] == r["race_id"]) & (standings_df["driver_id"] == d_id), ["points", "wins"]]
+            driver_points = dvrs["points"].max()
+            driver_wins = dvrs["wins"].max()
 
-        # Obtains all lap times for that race
-        lap_times = laps_df.loc[(laps_df["race_id"] == r["race_id"]) & (laps_df["driver_id"] == d_id), ["time", "milliseconds"]]
-        fastest = 999999 # Milliseconds stores the time in milliseconds
+            # Obtains all lap times for that race
+            lap_times = laps_df.loc[(laps_df["race_id"] == r["race_id"]) & (laps_df["driver_id"] == d_id), ["time", "milliseconds"]]
+            fastest = 999999 # Milliseconds stores the time in milliseconds
+            time = 0
+            for index, row in lap_times.iterrows():
+                if row["milliseconds"] < fastest:
+                    fastest = row["milliseconds"]
+                    time = row["time"]
+
+                    if time != 0:
+                        fastest_laps_per_race[r["circuit_id"]] = {"time": row["time"], "ms": row["milliseconds"], "race":r["race_id"]}
+        
+        best_time = 999999
         time = 0
-        for index, row in lap_times.iterrows():
-            if row["milliseconds"] < fastest:
-                fastest = row["milliseconds"]
-                time = row["time"]
+        c_name = ""
+        for obj in fastest_laps_per_race.values():
+            mscds = obj["ms"]
+        
+            if mscds < best_time: 
+                best_time = mscds
+                time = obj["time"]
 
-                if time != 0:
-                    fastest_laps_per_race[r["circuit_id"]] = {"time": row["time"], "ms": row["milliseconds"], "race":r["race_id"]}
-    
-    best_time = 999999
-    time = 0
-    c_name = ""
-    for obj in fastest_laps_per_race.values():
-        mscds = obj["ms"]
-      
-        if mscds < best_time: 
-            best_time = mscds
-            time = obj["time"]
+                b = list(fastest_laps_per_race.keys())[list(fastest_laps_per_race.values()).index(obj)]
+            
+                # c_name = c_df.loc[c_df['circuit_id'] == b, "name"]
 
-            b = list(fastest_laps_per_race.keys())[list(fastest_laps_per_race.values()).index(obj)]
-           
-            # c_name = c_df.loc[c_df['circuit_id'] == b, "name"]
-
-    if time == 0 : time="No time set"
-    
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Wins", value=int(driver_wins))
-    col2.metric("Fastest Lap", value=f"{time} CIRCUIT")
-    col3.metric("Total Points", value= int(driver_points))
+        if time == 0 : time="No time set"
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Wins", value=int(driver_wins))
+        col2.metric("Fastest Lap", value=f"{time} CIRCUIT")
+        col3.metric("Total Points", value= int(driver_points))
 
 
-def final_pos_graph(year, results_df, races_df, d_ids):
-    if (len(d_ids) == 1):
-        for d_id in d_ids:
-            names = []
-            finals = {"x": [], "y": []}
-            pos_order = []
+def final_pos_graph(year, results_df, races_df, d_ids, drivers_df):
+    finals = {}
+    count = len(d_ids)
+    for i in range(len(d_ids)):
+        finals[f"x{i}"] = []
+        finals[f"y{i}"] = []
 
-            races_df = races_df.loc[races_df["year"] == year, ["race_id", "circuit_id", "name"]]
-            for index, r in races_df.iterrows():
-                # Obtains each race the selected driver was in for the selected year
-                race_pos = results_df.loc[(results_df["race_id"] == r["race_id"]) & (results_df["driver_id"] == d_id), "position"]
-                race_pos = race_pos.replace('\\N','DNF')
+    names = []
+    pos_order = []
+    drivers = get_driver_names_from_id(d_ids, drivers_df)
 
-                names.append(r["name"])
-                for pos in race_pos.items():
-                    finals["x"].append(r["race_id"])
-                    finals["y"].append(pos[1])
+    for i, d_id in enumerate(d_ids):
+        races  = races_df.loc[races_df["year"] == year, ["race_id", "circuit_id", "name"]]
+        for index, r in races.iterrows():
+            # Obtains each race the selected driver was in for the selected year
+            race_pos = results_df.loc[(results_df["race_id"] == r["race_id"]) & (results_df["driver_id"] == d_id), "position"]
+            race_pos = race_pos.replace('\\N','DNF')
+
+            if r["name"] not in names: names.append(r["name"])
+            for pos in race_pos.items():
+                finals[f"x{i}"].append(r["race_id"])
+                finals[f"y{i}"].append(pos[1])
+
+                if pos[1] not in pos_order:
                     if pos[1] != "DNF":
                         pos_order.append(int(pos[1]))
 
-            df = pd.DataFrame(data=finals)
-            pos_order.sort() # Orders positions by numbers
-            
-            pos_order.append("DNF") # Adds DNF position for bottom of graph
+    fig = go.Figure()
+    vals = []
+    
+    for num in range(count):
+        for v in finals[f"x{num}"]:
+            vals.append(v)
+        fig.add_trace(go.Scatter(x=finals[f"x{num}"], y=finals[f"y{num}"], name=drivers[num], mode="markers+lines"))
+        
+    pos_order.sort() # Orders positions by numbers
+    pos_order.append("DNF") # Adds DNF position for bottom of graph
 
-            fig = px.line(df, x="x", y="y", title=f"Finishing Positions",
-                        labels = {"x": "Race", "y": "Final position"}, markers=True)
-                            
-            fig.update_layout(
-                xaxis = dict(
-                    tickangle = -45,
-                    tickmode = 'array',
-                    tickvals = df["x"],
-                    ticktext = names,
-                    type = "category"),
-                yaxis = dict(
-                    type = "category",
-                    categoryorder ='array', 
-                    autorange = "reversed",
-                    categoryarray = pos_order)
-            )
+    fig.update_layout(
+        title=go.layout.Title(text="Finishing Positions"),
+        xaxis = dict(
+            title = "Race",
+            tickangle = -45,
+            tickmode = 'array',
+            tickvals = vals,
+            ticktext = names,
+            type = "category"),
+        yaxis = dict(
+            title = "Finishing Position",
+            type = "category",
+            categoryorder ='array', 
+            autorange = "reversed",
+            categoryarray = pos_order)
+    )
 
-            fig.update_traces(line_color="#FF4B4B")
-            st.plotly_chart(fig, use_container_width=True)
+    # fig.update_traces(line_color="#FF4B4B")
+    st.plotly_chart(fig, use_container_width=True)
 
 
 def lap_times_graph(year, d_ids, laps_df, races_df, col):
@@ -142,7 +167,7 @@ def lap_times_graph(year, d_ids, laps_df, races_df, col):
         threshold = 3
         outliers = df[z > threshold]
         df = df.drop(outliers.index)
-        print(df)
+
         fig = px.strip(df, x="x", y="y",title="Lap Times<br><sub class='subtitle'>Hover over points for more details</sub>",
                        labels = {"x": "Lap time", "y": "Race"}, 
                        color_discrete_sequence = n_colors("rgb(255, 75, 75)", "rgb(255,255,255)", 3, colortype="rgb"), color="y", 
@@ -211,18 +236,19 @@ def Main_Setup(filter_data, dfs):
     if (len(drivers) == 0):
         st.text("Select driver(s) to view performance overview")
 
-    final_pos_graph(year, results_df, races_df, driver_ids)
+    driver_ids = get_driver_ids(drivers, drivers_df)
+
+    metric_setup(year, drivers, standings_df, races_df, drivers_df, laps_df, c_df)
+
+    if (len(drivers) != 0):
+        final_pos_graph(year, results_df, races_df, driver_ids, drivers_df)
         
     if (len(drivers) == 1):
         #TODO OLDER RACES AND DRIVER DATA NOT ALWAYS REGISTERING - MOSTLY LAPTIMES and D_ID
         #TODO MAKE GET RACES PER YEAR FOR EACH DRIVER MODULAR
-        #TODO MULTI DRIVER SELECTIONS
-        #TODO LAP TIMES LABELS AND REMOVE 'GRAND PRIX' ON POINTS CHART LABELS
+        #TODO MULTI DRIVER SELECTIONS -IN PROG
         #TODO FASTEST LAP - CIRCUIT PRINT
-        
-        driver_ids = get_driver_ids(drivers, drivers_df)
-
-        metric_setup(year, drivers, standings_df, races_df, drivers_df, laps_df, c_df)
+        #TODO SORT SECOND DRIVER DATA ON FINISHING POS GRAPH & COLOURS
 
         col1, col2 = st.columns(2, gap="large")
         lap_times_graph(year, driver_ids, laps_df, races_df, col1)
