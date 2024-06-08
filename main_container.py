@@ -30,25 +30,27 @@ def get_driver_ids(drivers, drivers_df):
     return driver_ids
 
 
-def metric_setup(year, driver, standings_df, races_df, drivers_df, laps_df, c_df):
-    if (len(driver) == 1):
-        driver_name = driver[0].split(" ")
+def metric_setup(year, d_ids, standings_df, races_df, drivers_df, laps_df, c_df):
+    data = {}
+    count = len(d_ids)
+
+    for d_name in d_ids:
+        data[d_name] = {"points": 0, "wins": 0 }
+
+        driver_name = d_name.split(" ")
         driver_id = drivers_df.loc[(drivers_df["forename"] == driver_name[0]) & (drivers_df["surname"] == driver_name[1]), "driver_id"]
-        
-        driver_points = 0
-        driver_wins = 0
 
         for d in driver_id.items():
             d_id = d[1]
 
         fastest_laps_per_race = {}
 
-        races_df = races_df.loc[races_df["year"] == year, ["race_id", "circuit_id"]]
-        for index, r in races_df.iterrows():
+        races = races_df.loc[races_df["year"] == year, ["race_id", "circuit_id"]]
+        for index, r in races.iterrows():
             # Obtains each race the selected driver was in for the selected year
             dvrs = standings_df.loc[(standings_df["race_id"] == r["race_id"]) & (standings_df["driver_id"] == d_id), ["points", "wins"]]
-            driver_points = dvrs["points"].max()
-            driver_wins = dvrs["wins"].max()
+            data[d_name]["points"] = dvrs["points"].max()
+            data[d_name]["wins"] = dvrs["wins"].max()
 
             # Obtains all lap times for that race
             lap_times = laps_df.loc[(laps_df["race_id"] == r["race_id"]) & (laps_df["driver_id"] == d_id), ["time", "milliseconds"]]
@@ -61,27 +63,66 @@ def metric_setup(year, driver, standings_df, races_df, drivers_df, laps_df, c_df
 
                     if time != 0:
                         fastest_laps_per_race[r["circuit_id"]] = {"time": row["time"], "ms": row["milliseconds"], "race":r["race_id"]}
-        
-        best_time = 999999
-        time = 0
-        c_name = ""
-        for obj in fastest_laps_per_race.values():
-            mscds = obj["ms"]
-        
-            if mscds < best_time: 
-                best_time = mscds
-                time = obj["time"]
 
-                b = list(fastest_laps_per_race.keys())[list(fastest_laps_per_race.values()).index(obj)]
-            
+            data[d_name]["fastest_laps"] = fastest_laps_per_race
+    
+    best_time = [999999, ""]
+    time = 0
+    wins = [0, ""]
+    points = [0, ""]
+    for driver in data:
+        if data[driver]["wins"] > wins[0]:
+            wins[0] = data[driver]["wins"]
+            wins[1] = driver
+        if data[driver]["points"] > points[0]:
+            points[0] = data[driver]["points"]
+            points[1] = driver
+
+        for obj in data[driver]["fastest_laps"].values():
+            mscds = obj["ms"]
+            if mscds < best_time[0]: 
+                best_time[0] = mscds
+                time = obj["time"]
+                best_time[1] = driver
+
+                # b = list(fastest_laps_per_race.keys())[list(fastest_laps_per_race.values()).index(obj)]
                 # c_name = c_df.loc[c_df['circuit_id'] == b, "name"]
 
-        if time == 0 : time="No time set"
-        
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Wins", value=int(driver_wins))
-        col2.metric("Fastest Lap", value=f"{time} CIRCUIT")
-        col3.metric("Total Points", value= int(driver_points))
+    if wins[1] == "":
+        wins.pop(1)
+    if points[1] == "":
+        points.pop(1)
+    if best_time[1] == "":
+        best_time.pop(1)
+    
+    val_wins = wins[0] 
+    title_wins = "Total Wins"
+    val_points = int(points[0])
+    title_points = "Total Points"
+    title_time = "Fastest Lap"
+    if time == 0: time="No time set"
+    val_time = time
+
+    if count > 1:
+        title_wins = "Most Wins"
+        title_points = "Most Points"
+        if len(wins)==2:
+            val_wins = f"{wins[1]}: {wins[0]}"
+        else:
+            val_wins = "N/A"
+
+        if len(points)==2:
+            val_points = f"{points[1]}: {int(points[0])}"
+        else:
+            val_points = "N/A"
+
+        if len(best_time)==2:
+            val_time = f"{best_time[1]}: {time}"
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric(title_wins, value=val_wins)
+    col2.metric(title_time, value=val_time)
+    col3.metric(title_points, value=val_points)
 
 
 def final_pos_graph(year, results_df, races_df, d_ids, drivers_df):
@@ -238,9 +279,8 @@ def Main_Setup(filter_data, dfs):
 
     driver_ids = get_driver_ids(drivers, drivers_df)
 
-    metric_setup(year, drivers, standings_df, races_df, drivers_df, laps_df, c_df)
-
     if (len(drivers) != 0):
+        metric_setup(year, drivers, standings_df, races_df, drivers_df, laps_df, c_df)
         final_pos_graph(year, results_df, races_df, driver_ids, drivers_df)
         
     if (len(drivers) == 1):
