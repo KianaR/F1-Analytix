@@ -211,6 +211,7 @@ def Main_Setup(filter_data, dfs):
     if (len(drivers) == 0):
         st.text("Select driver(s) to view performance overview")
 
+    driver_ids = get_driver_ids(drivers, drivers_df)
     final_pos_graph(year, results_df, races_df, driver_ids)
         
     if (len(drivers) == 1):
@@ -220,7 +221,6 @@ def Main_Setup(filter_data, dfs):
         #TODO LAP TIMES LABELS AND REMOVE 'GRAND PRIX' ON POINTS CHART LABELS
         #TODO FASTEST LAP - CIRCUIT PRINT
         
-        driver_ids = get_driver_ids(drivers, drivers_df)
 
         metric_setup(year, drivers, standings_df, races_df, drivers_df, laps_df, c_df)
 
