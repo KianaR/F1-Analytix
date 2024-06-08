@@ -107,17 +107,17 @@ def metric_setup(year, d_ids, standings_df, races_df, drivers_df, laps_df, c_df)
         title_wins = "Most Wins"
         title_points = "Most Points"
         if len(wins)==2:
-            val_wins = f"{wins[1]}: {wins[0]}"
+            val_wins = f"{wins[0]} ({wins[1]})"
         else:
             val_wins = "N/A"
 
         if len(points)==2:
-            val_points = f"{points[1]}: {int(points[0])}"
+            val_points = f"{int(points[0])} ({points[1]})"
         else:
             val_points = "N/A"
 
         if len(best_time)==2:
-            val_time = f"{best_time[1]}: {time}"
+            val_time = f"{time} ({best_time[1]})"
 
     col1, col2, col3 = st.columns(3)
     col1.metric(title_wins, value=val_wins)
@@ -125,7 +125,7 @@ def metric_setup(year, d_ids, standings_df, races_df, drivers_df, laps_df, c_df)
     col3.metric(title_points, value=val_points)
 
 
-def final_pos_graph(year, results_df, races_df, d_ids, drivers_df):
+def final_pos_graph(year, results_df, races_df, d_ids, drivers_df, scale):
     finals = {}
     count = len(d_ids)
     for i in range(len(d_ids)):
@@ -158,7 +158,7 @@ def final_pos_graph(year, results_df, races_df, d_ids, drivers_df):
     for num in range(count):
         for v in finals[f"x{num}"]:
             vals.append(v)
-        fig.add_trace(go.Scatter(x=finals[f"x{num}"], y=finals[f"y{num}"], name=drivers[num], mode="markers+lines"))
+        fig.add_trace(go.Scatter(x=finals[f"x{num}"], y=finals[f"y{num}"], name=drivers[num], mode="markers+lines", line_color=scale[num]))
         
     pos_order.sort() # Orders positions by numbers
     pos_order.append("DNF") # Adds DNF position for bottom of graph
@@ -226,37 +226,46 @@ def lap_times_graph(year, d_ids, laps_df, races_df, col):
         col.plotly_chart(fig, use_container_width=True)
 
 
-def points_graph(year, d_ids, col, races_df, results_df):
-    points = {"x":[], "y":[], "Name":[]}
-    for d_id in d_ids:
+def points_graph(year, d_ids, col, races_df, results_df, scale):
+    final_points = {}
+    count = len(d_ids)
+    for i in range(len(d_ids)):
+        final_points[f"x{i}"] = []
+        final_points[f"y{i}"] = []
+
+    # points = {"x":[], "y":[], "Name":[]}
+    for i, d_id in enumerate(d_ids):
         # Obtains each race the selected driver was in for the selected year
         races_df = races_df.loc[races_df["year"] == year, ["race_id", "name"]]
         for index, r in races_df.iterrows():
             df_points = results_df.loc[(results_df["race_id"] == r["race_id"]) & (results_df["driver_id"] == d_id), "points"]
             for race in df_points.items():
-                points["y"].append(race[1])
-                points["x"].append(r["race_id"])
+                final_points[f"y{i}"].append(race[1])
+                final_points[f"x{i}"].append(r["race_id"])
                 name = r["name"].replace("Grand Prix", "GP")
-                points["Name"].append(name)
+               # points["Name"].append(name)
 
-    df = pd.DataFrame(data=points)
-    fig = px.bar(df, x="x", y="y",
-                 title="Race Points",
-                 labels = {"x": "Race", "y": "Points"},
-                 hover_name="Name", hover_data={"x":False, "y":True, "Name":False})
+    fig = go.Figure()
+    for num in range(count):
+        fig.add_trace(go.Bar(x=final_points[f"x{num}"], y=final_points[f"y{num}"])) #name=names[num], mode="markers+lines", line_color=scale[num]))
+    # df = pd.DataFrame(data=points)
+    # fig = px.bar(df, x="x", y="y",
+    #              title="Race Points",
+    #              labels = {"x": "Race", "y": "Points"},
+    #              hover_name="Name", hover_data={"x":False, "y":True, "Name":False})
     
-    fig.update_traces(marker_color = '#FF4B4B')
-    fig.update_layout(
-            showlegend = False,
-            yaxis = dict(
-                side = "right"),
-            xaxis = dict(
-                tickangle = -45,
-                tickmode = 'array',
-                tickvals = df["x"],
-                ticktext = df["Name"],
-                type = "category")
-    )
+    # fig.update_traces(marker_color = '#FF4B4B')
+    # fig.update_layout(
+    #         showlegend = False,
+    #         yaxis = dict(
+    #             side = "right"),
+    #         xaxis = dict(
+    #             tickangle = -45,
+    #             tickmode = 'array',
+    #             tickvals = df["x"],
+    #             ticktext = df["Name"],
+    #             type = "category")
+    # )
     col.plotly_chart(fig, use_container_width=True)
 
 
@@ -279,17 +288,18 @@ def Main_Setup(filter_data, dfs):
 
     driver_ids = get_driver_ids(drivers, drivers_df)
 
+    # Custom colours for GO
+    scale = ["#FF4B4B", "#FFA5A5", "#FFFFFF", "#666464", "#F76757"]
+
+    col1, col2 = st.columns(2, gap="large")
     if (len(drivers) != 0):
         metric_setup(year, drivers, standings_df, races_df, drivers_df, laps_df, c_df)
-        final_pos_graph(year, results_df, races_df, driver_ids, drivers_df)
-        
+        final_pos_graph(year, results_df, races_df, driver_ids, drivers_df, scale)
+        points_graph(year, driver_ids, col2, races_df, results_df, scale)
+    
     if (len(drivers) == 1):
         #TODO OLDER RACES AND DRIVER DATA NOT ALWAYS REGISTERING - MOSTLY LAPTIMES and D_ID
         #TODO MAKE GET RACES PER YEAR FOR EACH DRIVER MODULAR
         #TODO MULTI DRIVER SELECTIONS -IN PROG
         #TODO FASTEST LAP - CIRCUIT PRINT
-        #TODO SORT SECOND DRIVER DATA ON FINISHING POS GRAPH & COLOURS
-
-        col1, col2 = st.columns(2, gap="large")
         lap_times_graph(year, driver_ids, laps_df, races_df, col1)
-        points_graph(year, driver_ids, col2, races_df, results_df)
