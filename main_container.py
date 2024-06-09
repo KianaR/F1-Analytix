@@ -1,4 +1,5 @@
 # Main container setup
+import math
 import numpy as np
 from scipy import stats
 import streamlit as st
@@ -225,6 +226,73 @@ def lap_times_graph(year, d_ids, laps_df, races_df, col):
         col.plotly_chart(fig, use_container_width=True)
 
 
+def avg_lap_times_graph(year, d_ids, laps_df, races_df, col, scale, drivers_df):
+    final_avgs = {}
+    count = len(d_ids)
+    for i in range(len(d_ids)):
+        final_avgs[f"x{i}"] = []
+        final_avgs[f"y{i}"] = []
+
+    names = []
+    drivers = get_driver_names_from_id(d_ids, drivers_df)
+
+    for i, d_id in enumerate(d_ids):
+        # Obtains each race the selected driver was in for the selected year
+        races = races_df.loc[races_df["year"] == year, ["race_id", "name"]]
+        for index, r in races.iterrows():
+            df_laps = laps_df.loc[(laps_df["race_id"] == r["race_id"]) & (laps_df["driver_id"] == d_id), "milliseconds"]
+
+            avg_lap = df_laps.mean()
+
+            if math.isnan(avg_lap) == False:
+                avg_lap = int(avg_lap)
+                final_avgs[f"x{i}"].append(avg_lap)
+                final_avgs[f"y{i}"].append(r["race_id"])
+
+                name = r["name"].replace("Grand Prix", "GP")
+                if name not in names: names.append(name)
+
+
+    fig = False
+
+    for num in range(count):
+        if (len(final_avgs[f"x{num}"])>0) and (len(final_avgs[f"y{num}"])>0):
+            fig = go.Figure()
+            break
+
+    vals = []
+    if fig != False:
+        for num in range(count):
+        # print(final_avgs[f"x{num}"], final_avgs[f"x{num}"])
+            if (len(final_avgs[f"x{num}"])>0) and (len(final_avgs[f"y{num}"])>0):
+                for v in final_avgs[f"y{num}"]:
+                    if v not in vals:
+                        vals.append(v)
+                fig.add_trace(go.Scatter(x=final_avgs[f"x{num}"], y=final_avgs[f"y{num}"], name=drivers[num], mode="markers", marker={'size': 10}, marker_color=scale[num]))
+
+        fig.update_layout(
+            title=go.layout.Title(text="Average lap time (per race)"),
+            xaxis = dict(
+                title = "Average lap time",
+                type = 'date', 
+                tickformat = '%M:%S.%f%f',
+                tickangle = -45,
+                dtick=10000),
+            yaxis = dict(
+                title = "Race",
+                tickmode = 'array',
+                tickvals = vals,
+                ticktext = names,
+                type = "category")
+        )
+
+        col.plotly_chart(fig, use_container_width=True)
+
+    else:
+        col.subheader("Average lap times (per race)")
+        col.write("Unable to retrieve suitable data")
+
+
 def points_graph(year, d_ids, col, races_df, results_df, scale, drivers_df):
     d_names = get_driver_names_from_id(d_ids, drivers_df)
     race_names = []
@@ -301,9 +369,6 @@ def Main_Setup(filter_data, dfs):
         points_graph(year, driver_ids, col2, races_df, results_df, scale, drivers_df)
     
         if (len(drivers) == 1):
-            #TODO OLDER RACES AND DRIVER DATA NOT ALWAYS REGISTERING - MOSTLY LAPTIMES and D_ID
-            #TODO MAKE GET RACES PER YEAR FOR EACH DRIVER MODULAR
-            #TODO MULTI DRIVER SELECTIONS -IN PROG
-            #TODO FASTEST LAP - CIRCUIT PRINT
-            #TODO ORDER MULTIDRIVER DATA ON FINIHSING POS
             lap_times_graph(year, driver_ids, laps_df, races_df, col1)
+        else:
+            avg_lap_times_graph(year, driver_ids, laps_df, races_df, col1, scale, drivers_df)
