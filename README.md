@@ -46,7 +46,7 @@ A few main features I'd like to add to this project include:
   -> Now select your driver(s) and begin!
   
 ## Known Issues ⚠️
-  * Older race/driver data not always registering - Currently raised under: [Issue #1]([https://github.com/KianaR/F1-Analytix/issues/1])
+  * Older race/driver data not always registering - Currently raised under: [Issue #1](https://github.com/KianaR/F1-Analytix/issues/1)
 
 ## Contributions 📃
 If you have any feedback or contributions to improve this project, feel free to share your thoughts! 
