@@ -107,17 +107,17 @@ def metric_setup(year, d_ids, standings_df, races_df, drivers_df, laps_df, c_df)
         title_wins = "Most Wins"
         title_points = "Most Points"
         if len(wins)==2:
-            val_wins = f"{wins[0]} ({wins[1]})"
+            val_wins = f"{wins[1]} [{wins[0]}]"
         else:
             val_wins = "N/A"
 
         if len(points)==2:
-            val_points = f"{int(points[0])} ({points[1]})"
+            val_points = f"{points[1]} [{int(points[0])}]"
         else:
             val_points = "N/A"
 
         if len(best_time)==2:
-            val_time = f"{time} ({best_time[1]})"
+            val_time = f"{best_time[1]} [{time}]"
 
     col1, col2, col3 = st.columns(3)
     col1.metric(title_wins, value=val_wins)
@@ -180,7 +180,6 @@ def final_pos_graph(year, results_df, races_df, d_ids, drivers_df, scale):
             categoryarray = pos_order)
     )
 
-    # fig.update_traces(line_color="#FF4B4B")
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -226,46 +225,49 @@ def lap_times_graph(year, d_ids, laps_df, races_df, col):
         col.plotly_chart(fig, use_container_width=True)
 
 
-def points_graph(year, d_ids, col, races_df, results_df, scale):
+def points_graph(year, d_ids, col, races_df, results_df, scale, drivers_df):
+    d_names = get_driver_names_from_id(d_ids, drivers_df)
+    race_names = []
+
     final_points = {}
     count = len(d_ids)
     for i in range(len(d_ids)):
         final_points[f"x{i}"] = []
         final_points[f"y{i}"] = []
 
-    # points = {"x":[], "y":[], "Name":[]}
     for i, d_id in enumerate(d_ids):
         # Obtains each race the selected driver was in for the selected year
-        races_df = races_df.loc[races_df["year"] == year, ["race_id", "name"]]
-        for index, r in races_df.iterrows():
+        races = races_df.loc[races_df["year"] == year, ["race_id", "name"]]
+        for index, r in races.iterrows():
+
+            name = r["name"].replace("Grand Prix", "GP")
+            if name not in race_names: race_names.append(name)
+
             df_points = results_df.loc[(results_df["race_id"] == r["race_id"]) & (results_df["driver_id"] == d_id), "points"]
             for race in df_points.items():
                 final_points[f"y{i}"].append(race[1])
                 final_points[f"x{i}"].append(r["race_id"])
-                name = r["name"].replace("Grand Prix", "GP")
-               # points["Name"].append(name)
-
+     
+    vals = []                       
     fig = go.Figure()
-    for num in range(count):
-        fig.add_trace(go.Bar(x=final_points[f"x{num}"], y=final_points[f"y{num}"])) #name=names[num], mode="markers+lines", line_color=scale[num]))
-    # df = pd.DataFrame(data=points)
-    # fig = px.bar(df, x="x", y="y",
-    #              title="Race Points",
-    #              labels = {"x": "Race", "y": "Points"},
-    #              hover_name="Name", hover_data={"x":False, "y":True, "Name":False})
     
-    # fig.update_traces(marker_color = '#FF4B4B')
-    # fig.update_layout(
-    #         showlegend = False,
-    #         yaxis = dict(
-    #             side = "right"),
-    #         xaxis = dict(
-    #             tickangle = -45,
-    #             tickmode = 'array',
-    #             tickvals = df["x"],
-    #             ticktext = df["Name"],
-    #             type = "category")
-    # )
+    for num in range(count):
+        for v in final_points[f"x{num}"]:
+            if v not in vals:
+                vals.append(v)
+        fig.add_trace(go.Bar(x=final_points[f"x{num}"], y=final_points[f"y{num}"], name=d_names[num], marker_color=scale[num])) 
+
+    fig.update_layout(
+            title=go.layout.Title(text="Total Points"),
+            # yaxis = dict(
+            #      side = "right"),
+            xaxis = dict(
+                tickangle = -45,
+                tickmode = 'array',
+                tickvals = vals,
+                ticktext = race_names,
+                type = "category")
+    )
     col.plotly_chart(fig, use_container_width=True)
 
 
@@ -291,15 +293,17 @@ def Main_Setup(filter_data, dfs):
     # Custom colours for GO
     scale = ["#FF4B4B", "#FFA5A5", "#FFFFFF", "#666464", "#F76757"]
 
-    col1, col2 = st.columns(2, gap="large")
     if (len(drivers) != 0):
         metric_setup(year, drivers, standings_df, races_df, drivers_df, laps_df, c_df)
         final_pos_graph(year, results_df, races_df, driver_ids, drivers_df, scale)
-        points_graph(year, driver_ids, col2, races_df, results_df, scale)
+
+        col1, col2 = st.columns(2, gap="large")
+        points_graph(year, driver_ids, col2, races_df, results_df, scale, drivers_df)
     
-    if (len(drivers) == 1):
-        #TODO OLDER RACES AND DRIVER DATA NOT ALWAYS REGISTERING - MOSTLY LAPTIMES and D_ID
-        #TODO MAKE GET RACES PER YEAR FOR EACH DRIVER MODULAR
-        #TODO MULTI DRIVER SELECTIONS -IN PROG
-        #TODO FASTEST LAP - CIRCUIT PRINT
-        lap_times_graph(year, driver_ids, laps_df, races_df, col1)
+        if (len(drivers) == 1):
+            #TODO OLDER RACES AND DRIVER DATA NOT ALWAYS REGISTERING - MOSTLY LAPTIMES and D_ID
+            #TODO MAKE GET RACES PER YEAR FOR EACH DRIVER MODULAR
+            #TODO MULTI DRIVER SELECTIONS -IN PROG
+            #TODO FASTEST LAP - CIRCUIT PRINT
+            #TODO ORDER MULTIDRIVER DATA ON FINIHSING POS
+            lap_times_graph(year, driver_ids, laps_df, races_df, col1)
