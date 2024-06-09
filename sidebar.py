@@ -28,7 +28,7 @@ def driver_select(drivers_df, races_df, standings_df, yr):
                 if (name not in driver_names):
                     driver_names.append(name)
 
-    driver_input = st.sidebar.multiselect("Driver(s)", options=driver_names, key="driver_input")
+    driver_input = st.sidebar.multiselect("Driver(s)", options=driver_names, key="driver_input", max_selections=5)
     return driver_input
 
 def SB_Setup(dfs):
