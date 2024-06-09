@@ -6,12 +6,16 @@
 # F1-Analytix 🏁 
 F1-Analytix is a work-in-progress EDA dashboard, designed to represent various datasets around Formula 1 Motorsport. The aim of this project was to expand on my current data analysis and maniuplation skills, using the Pandas library to prepare data and Streamlit to visually present said data to users.
 
-<br>
+<!-- <br>
 <p align="center">
   <img src="https://github.com/KianaR/F1-Analytix/assets/65909100/2b16e477-3e5d-494a-a66d-5820386bec12" width="500" >
   <img src="https://github.com/KianaR/F1-Analytix/assets/65909100/5c390aa3-8da7-488e-ae09-084584d09cd8" width="500" >
 </p>
-<br>
+<br> -->
+
+Multi-driver preview       |  Single driver preview
+:-------------------------:|:-------------------------:
+<img src="https://github.com/KianaR/F1-Analytix/assets/65909100/2b16e477-3e5d-494a-a66d-5820386bec12" width="500" >  |   <img src="https://github.com/KianaR/F1-Analytix/assets/65909100/5c390aa3-8da7-488e-ae09-084584d09cd8" width="500" >
 
 A few main features I'd like to add to this project include:
   - Additonal representations for solo drivers
